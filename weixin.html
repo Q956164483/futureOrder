@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>微信授权拉取</title>
+    <script src="dist/js/zepto.min.js"></script>
+    <script>
+        var REDIRECT_URL  = 'http://yuedaxue.com';
+        var serv_name = 'yuedaxue.com';
+        //alert(REDIRECT_URL+'>>>>>'+serv_name);
+        /*
+         *snsapi_base 不弹出授权页面,只能获取用户openid
+         *snsapi_userinfo 弹出授权页面，可通过openid拿到用户信息
+         */
+        var scope = 'snsapi_userinfo';
+
+
+        var isLoad = false;
+        var WXENV = new (function (ticketUrl) {
+            var self = this;
+            self.ticketUrl = ticketUrl;
+            self.ready = false;
+            self.readyHandlers = [];
+            self.shareData = {
+                title:'',   // 分享标题
+                desc: '',   // 分享内容                                                                                 // 分享描述
+                link: '',   // 分享链接
+                imgUrl: '', // 分享图标
+                type: '',
+                dataUrl: '',
+                success: function (res) {
+                },
+                cancel: function (res) {
+                }
+            };
+
+            self.debug = false;
+            self.jsApiList =
+                [
+                    'onMenuShareTimeline',
+                    'onMenuShareAppMessage',
+                    'onMenuShareQQ',
+                    'onMenuShareWeibo',
+                    'hideOptionMenu',
+                    'showOptionMenu',
+                    'hideMenuItems',
+                    'showMenuItems',
+                    'hideAllNonBaseMenuItem',
+                    'showAllNonBaseMenuItem',
+                    'closeWindow',
+                    'scanQRCode'
+                ];
+
+            self.addReadyHandler = function (callback) {
+                if (self.ready) {
+                    callback();
+                }
+                else {
+                    self.readyHandlers.push(callback);
+                }
+            };
+
+            self.updateShareData = function (data) {
+                if (typeof (data) == 'undefined') {
+                    data = self.shareData;
+                }
+
+                if (self.ready) {
+                    self._updateShareData(data);
+                }
+                else {
+                    self.addReadyHandler(function () {
+                        self._updateShareData(data);
+                    });
+                }
+            };
+
+            self._updateShareData = function (data) {
+                wx.onMenuShareTimeline({
+                    title: data.desc,
+                    link: data.link,
+                    imgUrl: data.imgUrl,
+                    success: data.success,
+                    cancel: data.cancel
+                });
+
+                wx.onMenuShareAppMessage({
+                    title: data.title,
+                    desc: data.desc,
+                    link: data.link,
+                    imgUrl: data.imgUrl,
+                    type: data.type,
+                    dataUrl: data.dataUrl,
+                    success: data.success,
+                    cancel: data.cancel
+                });
+
+                wx.onMenuShareQQ({
+                    title: data.title,
+                    desc: data.desc,
+                    link: data.link,
+                    imgUrl: data.imgUrl,
+                    success: data.success,
+                    cancel: data.cancel
+                });
+
+                wx.onMenuShareWeibo({
+                    title: data.title,
+                    desc: data.desc,
+                    link: data.link,
+                    imgUrl: data.imgUrl,
+                    success: data.success,
+                    cancel: data.cancel
+                });
+
+                if (!isLoad) {
+                    isLoad = true;
+                    console.log("loading")
+                }
+            };
+
+            window.WXENV_CALLBACK = function (config) {
+                console.log(config);
+                config.debug = self.debug;
+                config.jsApiList = self.jsApiList;
+                wx.config(config);
+            };
+
+            var js = document.getElementsByTagName('script')[0];
+
+            self.onEnvReady = function () {
+                var url = self.ticketUrl;
+                if (url.indexOf('?') == -1) {
+                    url += '?';
+                }
+                else {
+                    url += '&';
+                }
+
+                url += 'url=' + encodeURIComponent(window.location.href);
+                url += '&callback=WXENV_CALLBACK';
+                url += '&_=' + new Date().valueOf();
+
+                var script = document.createElement('script');
+                script.src = url;
+                js.parentNode.insertBefore(script, js.nextSibling);
+            };
+
+            var wxjs = document.createElement('script');
+            wxjs.addEventListener('load', function () {
+                wx.ready(function () {
+                    self.ready = true;
+                    self.updateShareData();
+
+                    wx.hideMenuItems({
+                        menuList: ['menuItem:profile', 'menuItem:addContact']
+                    });
+
+                    for (var i = 0; i < self.readyHandlers.length; i++) {
+                        self.readyHandlers[i]();
+                    }
+
+                    self.readyHandlers = [];
+                });
+                self.onEnvReady();
+            });
+
+            wxjs.src = 'http://res.wx.qq.com/open/js/jweixin-1.0.0.js';
+            js.parentNode.insertBefore(wxjs, js.nextSibling);
+        })('http://wx.e2capp.com/jsticket.ashx?serv_name=ford.esc.rank001');
+
+        function getAccessToken(){
+            //alert(11)
+            $.ajax({
+                type: 'GET',
+                url: 'http://wx.e2capp.com/auth.ashx?serv_name='+serv_name+'&scope='+scope,
+                dataType: 'json',
+                timeout: 10000,
+                success: function(data){
+                    console.log(data);
+                    window.sessionStorage.setItem('hasGetAccessToken','1');
+                },
+                error: function(xhr, type){
+                    $('#body').html('获取access_token失败');
+                }
+            })
+        }
+    </script>
+    <script>
+
+//        authorize();
+//        function authorize() {
+//            $.ajax({
+//                type: 'GET',
+//                url: 'http://wx.e2capp.com/jsticket.ashx?serv_name='+encodeURI(serv_name)+'&url='+encodeURI(REDIRECT_URL),
+//                dataType: 'json',
+//                timeout: 10000,
+//                success: function(data){
+//                    getAccessToken();
+//                },
+//                error: function(xhr, type){
+//                    $('#body').html('授权失败');
+//                }
+//            })
+//        }
+//        function getAccessToken(){
+//            $.ajax({
+//                type: 'GET',
+//                url: 'http://wx.e2capp.com/auth.ashx?serv_name='+serv_name+'&scope='+scope,
+//                dataType: 'json',
+//                timeout: 10000,
+//                success: function(data){
+//                    window.sessionStorage.setItem('hasGetAccessToken','1');
+//                },
+//                error: function(xhr, type){
+//                    $('#body').html('获取access_token失败');
+//                }
+//            })
+//        }
+    </script>
+</head>
+<body id="body">
+
+</body>
+</html>
